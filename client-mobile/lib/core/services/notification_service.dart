@@ -4,10 +4,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Cross-platform notification service for message alerts
-///
-/// Supported platforms: Android, iOS, macOS, Linux
-/// Windows support is limited (no flutter_local_notifications support)
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -18,7 +14,6 @@ class NotificationService {
   bool _isInitialized = false;
   bool _initializationFailed = false;
 
-  /// Check if notifications are supported on current platform
   bool get _isSupported {
     return Platform.isAndroid ||
         Platform.isIOS ||
@@ -26,11 +21,9 @@ class NotificationService {
         Platform.isLinux;
   }
 
-  /// Initialize the notification service
   Future<void> initialize() async {
     if (_isInitialized || _initializationFailed) return;
 
-    // Skip initialization on unsupported platforms
     if (!_isSupported) {
       debugPrint(
         'NotificationService: Notifications not supported on this platform',
@@ -42,19 +35,16 @@ class NotificationService {
     try {
       _notifications = FlutterLocalNotificationsPlugin();
 
-      // Android settings
       const androidSettings = AndroidInitializationSettings(
         '@mipmap/ic_launcher',
       );
 
-      // iOS/macOS settings
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
 
-      // Linux settings
       final linuxSettings = LinuxInitializationSettings(
         defaultActionName: 'Open',
         defaultIcon: AssetsLinuxIcon('assets/images/logo.svg'),
@@ -67,19 +57,8 @@ class NotificationService {
         linux: linuxSettings,
       );
 
-      final initialized = await _notifications!.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onNotificationTapped,
-      );
+      await _notifications!.initialize();
 
-      if (initialized != true) {
-        debugPrint('NotificationService: Plugin initialization returned false');
-        _initializationFailed = true;
-        _notifications = null;
-        return;
-      }
-
-      // Request permissions on Android 13+
       if (Platform.isAndroid) {
         try {
           await _notifications!
@@ -91,7 +70,6 @@ class NotificationService {
           debugPrint(
             'NotificationService: Failed to request Android permissions: $e',
           );
-          // Continue - notifications might still work
         }
       }
 
@@ -102,16 +80,13 @@ class NotificationService {
       debugPrint('Stack trace: $stackTrace');
       _initializationFailed = true;
       _notifications = null;
-      // Don't rethrow - app should work without notifications
     }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - can navigate to specific conversation
     debugPrint('Notification tapped: ${response.payload}');
   }
 
-  /// Show a message notification with sound
   Future<void> showMessageNotification({
     required String senderName,
     required String messagePreview,
@@ -119,10 +94,8 @@ class NotificationService {
   }) async {
     if (!_isInitialized && !_initializationFailed) await initialize();
 
-    // Play notification sound
     await _playNotificationSound();
 
-    // Show system notification (if available)
     if (_notifications != null) {
       await _showSystemNotification(
         title: senderName,
@@ -132,17 +105,14 @@ class NotificationService {
     }
   }
 
-  /// Play notification sound
   Future<void> _playNotificationSound() async {
     try {
       await _audioPlayer.play(AssetSource('sounds/notification.mp3'));
     } catch (e) {
-      // Silently fail if audio playback fails
       debugPrint('Failed to play notification sound: $e');
     }
   }
 
-  /// Show system notification
   Future<void> _showSystemNotification({
     required String title,
     required String body,
@@ -158,13 +128,13 @@ class NotificationService {
       priority: Priority.high,
       showWhen: true,
       enableVibration: true,
-      playSound: false, // We play our own sound
+      playSound: false,
     );
 
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: false, // We play our own sound
+      presentSound: false,
     );
 
     const linuxDetails = LinuxNotificationDetails(
@@ -180,10 +150,10 @@ class NotificationService {
 
     try {
       await _notifications!.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title,
-        body,
-        notificationDetails,
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
         payload: payload,
       );
     } catch (e) {
@@ -191,7 +161,6 @@ class NotificationService {
     }
   }
 
-  /// Dispose resources
   void dispose() {
     _audioPlayer.dispose();
   }
