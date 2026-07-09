@@ -57,7 +57,7 @@ class NotificationService {
         linux: linuxSettings,
       );
 
-      await _notifications!.initialize();
+      await _notifications!.initialize(settings: initSettings);
 
       if (Platform.isAndroid) {
         try {
