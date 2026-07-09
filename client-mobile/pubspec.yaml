@@ -109,7 +109,7 @@ dev_dependencies:
   freezed: ^2.4.5
 
   # Testing
-  mocktail: ^1.0.1
+  mocktail: ^0.3.0
   bloc_test: ^8.0.0
 
 flutter:
