@@ -382,11 +382,13 @@ jobs:
           flutter pub upgrade --major-versions
           flutter pub get
 
-      - name: Build Android
+      - name: Build Android APK
         working-directory: ./client-mobile
-        run: |
-          chmod +x ./scripts/build-android.sh
-          ./scripts/build-android.sh appbundle release
+        run: ./scripts/build-android.sh apk release
+
+      - name: Build Android AAB
+        working-directory: ./client-mobile
+        run: ./scripts/build-android.sh appbundle release
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
