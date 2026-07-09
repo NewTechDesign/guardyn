@@ -376,6 +376,12 @@ jobs:
           storeFile=release.keystore
           EOF
 
+      - name: Update Flutter dependencies
+        working-directory: ./client-mobile
+        run: |
+          flutter pub upgrade --major-versions
+          flutter pub get
+
       - name: Build Android
         working-directory: ./client-mobile
         run: |
@@ -431,6 +437,12 @@ jobs:
           key: ${{ runner.os }}-cargo-mobile-release-${{ hashFiles('client-mobile/native/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-mobile-release-
+
+      - name: Update Flutter dependencies
+        working-directory: ./client-mobile
+        run: |
+          flutter pub upgrade --major-versions
+          flutter pub get
 
       - name: Build iOS
         working-directory: ./client-mobile
