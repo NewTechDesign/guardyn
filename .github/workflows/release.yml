@@ -440,17 +440,9 @@ jobs:
 
       - name: Update Flutter dependencies
         working-directory: ./client-mobile
-        run: |
-          flutter pub upgrade --major-versions
-          flutter pub get
+        run: flutter pub get
 
-      - name: Build iOS
-        working-directory: ./client-mobile
-        run: |
-          chmod +x ./scripts/build-ios.sh
-          ./scripts/build-ios.sh
-
-      - name: Build Flutter iOS
+      - name: Build Flutter iOS for simulator
         working-directory: ./client-mobile
         run: flutter build ios --release --no-codesign --target-platform ios-simulator
 
@@ -458,9 +450,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-ios-release
-          path: |
-            client-mobile/build/ios/iphoneos/Runner.app
-            client-mobile/build/ios/iphoneos/*.ipa
+          path: client-mobile/build/ios/iphonesimulator/Runner.app
         continue-on-error: true
 
   create-release:
