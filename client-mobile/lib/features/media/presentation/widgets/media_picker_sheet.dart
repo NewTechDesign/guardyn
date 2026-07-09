@@ -6,21 +6,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../domain/entities/media_entity.dart';
 
-/// Result from media picker
 class MediaPickerResult {
-  /// Local file path
   final String filePath;
-
-  /// Detected media type
   final MediaType type;
-
-  /// MIME type
   final String mimeType;
-
-  /// Original filename
   final String filename;
-
-  /// File size in bytes
   final int sizeBytes;
 
   const MediaPickerResult({
@@ -32,23 +22,10 @@ class MediaPickerResult {
   });
 }
 
-/// Bottom sheet for selecting media to attach
-///
-/// Provides options for:
-/// - Camera (photo/video)
-/// - Gallery (photo/video)
-/// - Documents (files)
 class MediaPickerSheet extends StatelessWidget {
-  /// Callback when media is selected
   final void Function(MediaPickerResult result) onMediaSelected;
-
-  /// Callback when picker is cancelled
   final VoidCallback? onCancelled;
-
-  /// Whether to allow multiple file selection
   final bool allowMultiple;
-
-  /// Maximum file size in bytes (default: 100 MB)
   final int maxFileSize;
 
   const MediaPickerSheet({
@@ -59,7 +36,6 @@ class MediaPickerSheet extends StatelessWidget {
     this.maxFileSize = 100 * 1024 * 1024,
   });
 
-  /// Show the media picker bottom sheet
   static Future<void> show(
     BuildContext context, {
     required void Function(MediaPickerResult result) onMediaSelected,
@@ -93,7 +69,6 @@ class MediaPickerSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -103,8 +78,6 @@ class MediaPickerSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-
-            // Title
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
@@ -114,43 +87,33 @@ class MediaPickerSheet extends StatelessWidget {
                 ),
               ),
             ),
-
             const Divider(),
-
-            // Options
             _PickerOption(
               icon: Icons.camera_alt_rounded,
               label: 'Take Photo',
               onTap: () => _pickFromCamera(context, isVideo: false),
             ),
-
             _PickerOption(
               icon: Icons.videocam_rounded,
               label: 'Record Video',
               onTap: () => _pickFromCamera(context, isVideo: true),
             ),
-
             _PickerOption(
               icon: Icons.photo_library_rounded,
               label: 'Photo Library',
               onTap: () => _pickFromGallery(context, isVideo: false),
             ),
-
             _PickerOption(
               icon: Icons.video_library_rounded,
               label: 'Video Library',
               onTap: () => _pickFromGallery(context, isVideo: true),
             ),
-
             _PickerOption(
               icon: Icons.insert_drive_file_rounded,
               label: 'Documents',
               onTap: () => _pickDocument(context),
             ),
-
             const SizedBox(height: 8),
-
-            // Cancel button
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -161,7 +124,6 @@ class MediaPickerSheet extends StatelessWidget {
                 style: TextStyle(color: theme.colorScheme.error),
               ),
             ),
-
             const SizedBox(height: 8),
           ],
         ),
@@ -247,12 +209,10 @@ class MediaPickerSheet extends StatelessWidget {
   }
 
   Future<void> _processFile(BuildContext context, String filePath, String filename) async {
-    // Get file info
     final file = File(filePath);
     final stat = await file.stat();
     final sizeBytes = stat.size;
 
-    // Check size
     if (sizeBytes > maxFileSize) {
       if (context.mounted) {
         _showError(
@@ -263,11 +223,9 @@ class MediaPickerSheet extends StatelessWidget {
       return;
     }
 
-    // Detect MIME type
     final mimeType = _detectMimeType(filePath);
     final type = _detectMediaType(mimeType);
 
-    // Close picker and return result
     if (context.mounted) {
       Navigator.pop(context);
       onMediaSelected(MediaPickerResult(
@@ -283,24 +241,20 @@ class MediaPickerSheet extends StatelessWidget {
   String _detectMimeType(String filePath) {
     final extension = filePath.split('.').last.toLowerCase();
     return switch (extension) {
-      // Images
       'jpg' || 'jpeg' => 'image/jpeg',
       'png' => 'image/png',
       'gif' => 'image/gif',
       'webp' => 'image/webp',
       'heic' => 'image/heic',
       'heif' => 'image/heif',
-      // Videos
       'mp4' => 'video/mp4',
       'webm' => 'video/webm',
       'mov' => 'video/quicktime',
       'avi' => 'video/x-msvideo',
-      // Audio
       'mp3' => 'audio/mpeg',
       'm4a' => 'audio/x-m4a',
       'wav' => 'audio/wav',
       'ogg' => 'audio/ogg',
-      // Documents
       'pdf' => 'application/pdf',
       'doc' => 'application/msword',
       'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -336,7 +290,6 @@ class MediaPickerSheet extends StatelessWidget {
   }
 }
 
-/// Individual picker option row
 class _PickerOption extends StatelessWidget {
   final IconData icon;
   final String label;
