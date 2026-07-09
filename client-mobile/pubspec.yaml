@@ -106,11 +106,11 @@ dev_dependencies:
 
   # Rust FFI Code Generation
   ffigen: ^20.1.1
-  freezed: ^2.4.5
+  freezed: ^2.5.0
 
   # Testing
-  mocktail: ^1.0.1
-  bloc_test: ^9.1.5
+  mocktail: ^1.0.0
+  bloc_test: ^9.0.0
 
 flutter:
   uses-material-design: true
