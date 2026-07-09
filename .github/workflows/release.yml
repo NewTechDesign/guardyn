@@ -452,7 +452,7 @@ jobs:
 
       - name: Build Flutter iOS
         working-directory: ./client-mobile
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --target-platform ios-simulator
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
