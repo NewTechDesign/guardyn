@@ -11,6 +11,11 @@ on:
         type: boolean
         default: false
         required: true
+      publish-release:
+        description: 'Publish release to GitHub'
+        type: boolean
+        default: true
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -379,7 +384,6 @@ jobs:
       - name: Update Flutter dependencies
         working-directory: ./client-mobile
         run: |
-          flutter pub upgrade --major-versions
           flutter pub get
 
       - name: Build Android APK
@@ -459,7 +463,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [publish-backend, build-desktop-linux, build-desktop-macos, build-desktop-windows, build-mobile-android, build-mobile-ios]
-    if: ${{ always() }}
+    if: ${{ always() && github.event.inputs.publish-release == 'true' }}
     permissions:
       contents: write
 
@@ -473,14 +477,28 @@ jobs:
           path: release-artifacts
         continue-on-error: true
 
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -la release-artifacts/
+          for dir in release-artifacts/*/; do
+            echo "Contents of ${dir}:"
+            ls -la "${dir}" || true
+          done
+
       - name: Package artifacts
         run: |
           mkdir -p release
           cd release-artifacts
           for dir in */; do
-            tar -czf "../release/${dir%/}.tar.gz" "$dir"
+            if [ -d "$dir" ]; then
+              echo "Packaging ${dir%/}..."
+              tar -czf "../release/${dir%/}.tar.gz" "$dir"
+            fi
           done
-        continue-on-error: true
+          cd ..
+          echo "Packaged files:"
+          ls -la release/
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
