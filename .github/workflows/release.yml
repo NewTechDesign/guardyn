@@ -487,7 +487,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-        continue-on-error: true
 
       - name: List downloaded artifacts
         run: |
@@ -498,23 +497,46 @@ jobs:
             ls -la "${dir}" || true
           done
 
-      - name: Package artifacts
+      - name: Prepare release files
         run: |
           mkdir -p release
-          cd release-artifacts
-          for dir in */; do
-            if [ -d "$dir" ]; then
-              echo "Packaging ${dir%/}..."
-              tar -czf "../release/${dir%/}.tar.gz" "$dir"
-            fi
-          done
-          cd ..
-          echo "Packaged files:"
+        
+          # Backend binaries
+          if [ -d "release-artifacts/backend-release" ]; then
+            cp release-artifacts/backend-release/backend/target/release/*-service release/ 2>/dev/null || true
+            cp release-artifacts/backend-release/*.sig release/ 2>/dev/null || true
+            cp release-artifacts/backend-release/sbom.spdx.json release/ 2>/dev/null || true
+          fi
+        
+          # Linux desktop
+          if [ -d "release-artifacts/desktop-linux-release" ]; then
+            cp release-artifacts/desktop-linux-release/*.deb release/ 2>/dev/null || true
+            cp release-artifacts/desktop-linux-release/*.AppImage release/ 2>/dev/null || true
+          fi
+        
+          # macOS desktop
+          if [ -d "release-artifacts/desktop-macos-release" ]; then
+            cp release-artifacts/desktop-macos-release/*.dmg release/ 2>/dev/null || true
+          fi
+        
+          # Windows desktop
+          if [ -d "release-artifacts/desktop-windows-release" ]; then
+            cp release-artifacts/desktop-windows-release/*.msi release/ 2>/dev/null || true
+            cp release-artifacts/desktop-windows-release/*.exe release/ 2>/dev/null || true
+          fi
+        
+          # Android mobile
+          if [ -d "release-artifacts/mobile-android-release" ]; then
+            cp release-artifacts/mobile-android-release/*.apk release/ 2>/dev/null || true
+            cp release-artifacts/mobile-android-release/*.aab release/ 2>/dev/null || true
+          fi
+        
+          echo "Files prepared for release:"
           ls -la release/
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: release/*.tar.gz
+          files: release/*
           fail_on_unmatched_files: false
