@@ -383,7 +383,9 @@ jobs:
 
       - name: Update Flutter dependencies
         working-directory: ./client-mobile
-        run: flutter pub get
+        run: |
+          flutter pub upgrade --major-versions
+          flutter pub get
 
       - name: Build Android APK
         working-directory: ./client-mobile
