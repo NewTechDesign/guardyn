@@ -107,7 +107,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler imagemagick
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler imagemagick libfuse2 libarchive-tools patchelf desktop-file-utils
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -155,16 +155,25 @@ jobs:
           convert landing/media/logo.png -resize 50x50 client-desktop/src-tauri/icons/StoreLogo.png
 
       - name: Build desktop app
+        id: build
         working-directory: ./client-desktop
-        run: npm run tauri build -- --bundles deb,appimage
+        run: |
+          npm run tauri build -- --bundles deb,appimage 2>&1 | tee ../tauri-build-linux.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-log-linux
+          path: tauri-build-linux.log
 
       - name: Upload Linux desktop artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux-release
           path: |
-            client-desktop/src-tauri/target/release/bundle/deb/*.deb
-            client-desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            client-desktop/target/release/bundle/**/*.deb
+            client-desktop/target/release/bundle/**/*.AppImage
 
   build-desktop-macos:
     name: Build Desktop macOS
@@ -179,6 +188,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           brew install protobuf
           brew install imagemagick
@@ -210,33 +221,45 @@ jobs:
       - name: Generate Tauri icons
         run: |
           mkdir -p client-desktop/src-tauri/icons
-          convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/icon.png
-          convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/128x128.png
-          convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/128x128@2x.png
-          convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.icns
-          convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.ico
-          convert landing/media/logo.png -resize 32x32 client-desktop/src-tauri/icons/32x32.png
-          convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/512x512.png
-          convert landing/media/logo.png -resize 1024x1024 client-desktop/src-tauri/icons/512x512@2x.png
-          convert landing/media/logo.png -resize 107x107 client-desktop/src-tauri/icons/Square107x107Logo.png
-          convert landing/media/logo.png -resize 142x142 client-desktop/src-tauri/icons/Square142x142Logo.png
-          convert landing/media/logo.png -resize 150x150 client-desktop/src-tauri/icons/Square150x150Logo.png
-          convert landing/media/logo.png -resize 30x30 client-desktop/src-tauri/icons/Square30x30Logo.png
-          convert landing/media/logo.png -resize 310x310 client-desktop/src-tauri/icons/Square310x310Logo.png
-          convert landing/media/logo.png -resize 44x44 client-desktop/src-tauri/icons/Square44x44Logo.png
-          convert landing/media/logo.png -resize 71x71 client-desktop/src-tauri/icons/Square71x71Logo.png
-          convert landing/media/logo.png -resize 89x89 client-desktop/src-tauri/icons/Square89x89Logo.png
-          convert landing/media/logo.png -resize 50x50 client-desktop/src-tauri/icons/StoreLogo.png
+          magick landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/icon.png
+          magick landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/128x128.png
+          magick landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/128x128@2x.png
+          magick landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.icns
+          magick landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.ico
+          magick landing/media/logo.png -resize 32x32 client-desktop/src-tauri/icons/32x32.png
+          magick landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/512x512.png
+          magick landing/media/logo.png -resize 1024x1024 client-desktop/src-tauri/icons/512x512@2x.png
+          magick landing/media/logo.png -resize 107x107 client-desktop/src-tauri/icons/Square107x107Logo.png
+          magick landing/media/logo.png -resize 142x142 client-desktop/src-tauri/icons/Square142x142Logo.png
+          magick landing/media/logo.png -resize 150x150 client-desktop/src-tauri/icons/Square150x150Logo.png
+          magick landing/media/logo.png -resize 30x30 client-desktop/src-tauri/icons/Square30x30Logo.png
+          magick landing/media/logo.png -resize 310x310 client-desktop/src-tauri/icons/Square310x310Logo.png
+          magick landing/media/logo.png -resize 44x44 client-desktop/src-tauri/icons/Square44x44Logo.png
+          magick landing/media/logo.png -resize 71x71 client-desktop/src-tauri/icons/Square71x71Logo.png
+          magick landing/media/logo.png -resize 89x89 client-desktop/src-tauri/icons/Square89x89Logo.png
+          magick landing/media/logo.png -resize 50x50 client-desktop/src-tauri/icons/StoreLogo.png
 
       - name: Build desktop app
+        id: build
         working-directory: ./client-desktop
-        run: npm run tauri build -- --bundles dmg
+        continue-on-error: true
+        run: |
+          npm run tauri build -- --bundles dmg 2>&1 | tee ../tauri-build-macos.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-log-macos
+          path: tauri-build-macos.log
 
       - name: Upload macOS desktop artifacts
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-release
-          path: client-desktop/src-tauri/target/release/bundle/dmg/*.dmg
+          path: |
+            client-desktop/target/release/bundle/**/*.dmg
 
   build-desktop-windows:
     name: Build Desktop Windows
@@ -291,8 +314,7 @@ jobs:
           magick convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/icon.png
           magick convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/128x128.png
           magick convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/128x128@2x.png
-          magick convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.icns
-          magick convert landing/media/logo.png -resize 256x256 client-desktop/src-tauri/icons/icon.ico
+          magick convert landing/media/logo.png -define icon:auto-resize=256,128,64,48,32,16 client-desktop/src-tauri/icons/icon.ico
           magick convert landing/media/logo.png -resize 32x32 client-desktop/src-tauri/icons/32x32.png
           magick convert landing/media/logo.png -resize 512x512 client-desktop/src-tauri/icons/512x512.png
           magick convert landing/media/logo.png -resize 1024x1024 client-desktop/src-tauri/icons/512x512@2x.png
@@ -307,16 +329,27 @@ jobs:
           magick convert landing/media/logo.png -resize 50x50 client-desktop/src-tauri/icons/StoreLogo.png
 
       - name: Build desktop app
+        id: build
         working-directory: ./client-desktop
-        run: npm run tauri build -- --bundles msi,nsis
+        continue-on-error: true
+        run: |
+          npm run tauri build -- --bundles msi,nsis 2>&1 | tee ../tauri-build-windows.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-log-windows
+          path: tauri-build-windows.log
 
       - name: Upload Windows desktop artifacts
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-release
           path: |
-            client-desktop/src-tauri/target/release/bundle/msi/*.msi
-            client-desktop/src-tauri/target/release/bundle/nsis/*.exe
+            client-desktop/target/release/bundle/**/*.msi
+            client-desktop/target/release/bundle/**/*.exe
 
   build-mobile-android:
     name: Build Mobile Android
@@ -406,61 +439,6 @@ jobs:
             client-mobile/dist/android/*.apk
             client-mobile/dist/android/*.aab
 
-#  build-mobile-ios:
-#    name: Build Mobile iOS
-#    runs-on: macos-latest
-#    needs: publish-backend
-#    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v4
-#
-#      - name: Setup Flutter
-#        uses: subosito/flutter-action@v2
-#        with:
-#          flutter-version: '3.44.4'
-#          channel: 'stable'
-#          cache: true
-#          cache-key: flutter-${{ runner.os }}-release-${{ hashFiles('client-mobile/pubspec.lock') }}
-#
-#      - name: Install Rust
-#        uses: dtolnay/rust-toolchain@stable
-#
-#      - name: Install system dependencies
-#        run: brew install protobuf
-#
-#      - name: Setup Rust targets
-#        run: rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-#
-#      - name: Cache Cargo
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#            ~/.cargo/bin/
-#            ~/.cargo/registry/index/
-#            ~/.cargo/registry/cache/
-#            ~/.cargo/git/db/
-#            client-mobile/native/target/
-#          key: ${{ runner.os }}-cargo-mobile-release-${{ hashFiles('client-mobile/native/Cargo.lock') }}
-#          restore-keys: |
-#            ${{ runner.os }}-cargo-mobile-release-
-#
-#      - name: Update Flutter dependencies
-#        working-directory: ./client-mobile
-#        run: flutter pub get
-#
-#      - name: Build Flutter iOS for simulator
-#        working-directory: ./client-mobile
-#        run: flutter build ios --release --no-codesign --target-platform ios-simulator
-#
-#      - name: Upload iOS artifacts
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: mobile-ios-release
-#          path: client-mobile/build/ios/iphonesimulator/Runner.app
-#        continue-on-error: true
-
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -514,32 +492,32 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-        
+          
           # Backend binaries
           if [ -d "release-artifacts/backend-release" ]; then
             find release-artifacts/backend-release -type f \( -name "*-service" -o -name "*.sig" -o -name "*.spdx.json" \) -exec cp {} release/ \; 2>/dev/null || true
           fi
-        
+          
           # Linux desktop
           if [ -d "release-artifacts/desktop-linux-release" ]; then
             find release-artifacts/desktop-linux-release -type f \( -name "*.deb" -o -name "*.AppImage" \) -exec cp {} release/ \; 2>/dev/null || true
           fi
-        
+          
           # macOS desktop
           if [ -d "release-artifacts/desktop-macos-release" ]; then
             find release-artifacts/desktop-macos-release -type f -name "*.dmg" -exec cp {} release/ \; 2>/dev/null || true
           fi
-        
+          
           # Windows desktop
           if [ -d "release-artifacts/desktop-windows-release" ]; then
             find release-artifacts/desktop-windows-release -type f \( -name "*.msi" -o -name "*.exe" \) -exec cp {} release/ \; 2>/dev/null || true
           fi
-        
+          
           # Android mobile
           if [ -d "release-artifacts/mobile-android-release" ]; then
             find release-artifacts/mobile-android-release -type f \( -name "*.apk" -o -name "*.aab" \) -exec cp {} release/ \; 2>/dev/null || true
           fi
-        
+          
           echo "Files prepared for release:"
           ls -la release/
 
