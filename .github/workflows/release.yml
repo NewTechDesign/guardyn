@@ -11,6 +11,11 @@ on:
         type: boolean
         default: false
         required: true
+      build-frontend:
+        description: 'Build frontend apps'
+        type: boolean
+        default: true
+        required: true
       publish-release:
         description: 'Publish release to GitHub'
         type: boolean
@@ -90,8 +95,7 @@ jobs:
   build-desktop-linux:
     name: Build Desktop Linux
     runs-on: ubuntu-latest
-    needs: publish-backend
-    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
+    if: ${{ github.event.inputs.build-frontend == 'true' || github.event_name == 'push' }}
 
     steps:
       - name: Checkout repository
@@ -165,8 +169,7 @@ jobs:
   build-desktop-macos:
     name: Build Desktop macOS
     runs-on: macos-latest
-    needs: publish-backend
-    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
+    if: ${{ github.event.inputs.build-frontend == 'true' || github.event_name == 'push' }}
 
     steps:
       - name: Checkout repository
@@ -238,8 +241,7 @@ jobs:
   build-desktop-windows:
     name: Build Desktop Windows
     runs-on: windows-latest
-    needs: publish-backend
-    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
+    if: ${{ github.event.inputs.build-frontend == 'true' || github.event_name == 'push' }}
 
     steps:
       - name: Checkout repository
@@ -319,8 +321,7 @@ jobs:
   build-mobile-android:
     name: Build Mobile Android
     runs-on: ubuntu-latest
-    needs: publish-backend
-    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
+    if: ${{ github.event.inputs.build-frontend == 'true' || github.event_name == 'push' }}
 
     steps:
       - name: Checkout repository
@@ -405,66 +406,21 @@ jobs:
             client-mobile/dist/android/*.apk
             client-mobile/dist/android/*.aab
 
-#  build-mobile-ios:
-#    name: Build Mobile iOS
-#    runs-on: macos-latest
-#    needs: publish-backend
-#    if: ${{ always() && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') }}
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v4
-#
-#      - name: Setup Flutter
-#        uses: subosito/flutter-action@v2
-#        with:
-#          flutter-version: '3.44.4'
-#          channel: 'stable'
-#          cache: true
-#          cache-key: flutter-${{ runner.os }}-release-${{ hashFiles('client-mobile/pubspec.lock') }}
-#
-#      - name: Install Rust
-#        uses: dtolnay/rust-toolchain@stable
-#
-#      - name: Install system dependencies
-#        run: brew install protobuf
-#
-#      - name: Setup Rust targets
-#        run: rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-#
-#      - name: Cache Cargo
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#            ~/.cargo/bin/
-#            ~/.cargo/registry/index/
-#            ~/.cargo/registry/cache/
-#            ~/.cargo/git/db/
-#            client-mobile/native/target/
-#          key: ${{ runner.os }}-cargo-mobile-release-${{ hashFiles('client-mobile/native/Cargo.lock') }}
-#          restore-keys: |
-#            ${{ runner.os }}-cargo-mobile-release-
-#
-#      - name: Update Flutter dependencies
-#        working-directory: ./client-mobile
-#        run: flutter pub get
-#
-#      - name: Build Flutter iOS for simulator
-#        working-directory: ./client-mobile
-#        run: flutter build ios --release --no-codesign --target-platform ios-simulator
-#
-#      - name: Upload iOS artifacts
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: mobile-ios-release
-#          path: client-mobile/build/ios/iphonesimulator/Runner.app
-#        continue-on-error: true
-
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [publish-backend, build-desktop-linux, build-desktop-macos, build-desktop-windows, build-mobile-android]
-    if: ${{ always() && github.event.inputs.publish-release == 'true' }}
+    needs: 
+      - publish-backend
+      - build-desktop-linux
+      - build-desktop-macos
+      - build-desktop-windows
+      - build-mobile-android
+    if: ${{ always() && github.event.inputs.publish-release == 'true' && 
+            (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped') &&
+            (needs.build-desktop-linux.result == 'success' || needs.build-desktop-linux.result == 'skipped') &&
+            (needs.build-desktop-macos.result == 'success' || needs.build-desktop-macos.result == 'skipped') &&
+            (needs.build-desktop-windows.result == 'success' || needs.build-desktop-windows.result == 'skipped') &&
+            (needs.build-mobile-android.result == 'success' || needs.build-mobile-android.result == 'skipped') }}
     permissions:
       contents: write
 
