@@ -35,9 +35,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   GUARDYN_DOMAIN: ${{ github.event.inputs.domain || 'nothingcore.duckdns.org' }}
-  PRODUCTION_BUILD: ${{ github.event.inputs.production-build || true }}
-  WS_SECURE: ${{ github.event.inputs.production-build == true && 'true' || 'false' }}
-  WS_PORT: ${{ github.event.inputs.production-build == true && '443' || '8081' }}
+  PRODUCTION_BUILD: ${{ github.event.inputs.production-build == 'true' }}
+  WS_SECURE: ${{ github.event.inputs.production-build == 'true' && 'true' || 'false' }}
+  WS_PORT: ${{ github.event.inputs.production-build == 'true' && '443' || '8081' }}
 
 jobs:
   publish-backend:
