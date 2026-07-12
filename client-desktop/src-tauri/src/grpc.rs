@@ -18,10 +18,19 @@ pub struct GrpcConfig {
 
 impl Default for GrpcConfig {
     fn default() -> Self {
+        // Get domain from environment variable
+        let domain = std::env::var("GUARDYN_DOMAIN")
+            .or_else(|_| std::env::var("GRPC_HOST"))
+            .unwrap_or_else(|_| "localhost".to_string());
+        
+        let is_production = domain != "localhost" && domain != "127.0.0.1";
+        let scheme = if is_production { "https" } else { "http" };
+        let port = if is_production { "" } else { ":8080" };
+        
         Self {
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: format!("{}://{}{}/api", scheme, domain, port),
             timeout_secs: 30,
-            use_tls: false,
+            use_tls: is_production,
         }
     }
 }
