@@ -7,6 +7,10 @@
 #   - Android SDK installed
 #   - Flutter SDK installed
 #   - Release keystore configured
+#
+# Usage:
+#   ./build-android.sh [appbundle|apk] [release|debug] [domain] [ws_secure]
+#   ./build-android.sh appbundle release nothingcore.duckdns.org true
 
 set -euo pipefail
 
@@ -29,10 +33,14 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # Parse arguments
 BUILD_TYPE="${1:-appbundle}"  # appbundle or apk
 BUILD_MODE="${2:-release}"    # release or debug
+GUARDYN_DOMAIN="${3:-nothingcore.duckdns.org}"  # Domain for self-hosted
+WS_SECURE="${4:-true}"        # true for wss, false for ws
 
 log_info "Starting Android build process..."
 log_info "Build type: $BUILD_TYPE"
 log_info "Build mode: $BUILD_MODE"
+log_info "Domain: $GUARDYN_DOMAIN"
+log_info "WebSocket Secure: $WS_SECURE"
 
 # Check prerequisites
 check_prerequisites() {
@@ -115,19 +123,22 @@ build_android() {
 
     log_info "Version: $VERSION ($BUILD_NUMBER)"
 
+    # Build with dart defines
+    DART_DEFINES="--dart-define=GUARDYN_DOMAIN=$GUARDYN_DOMAIN --dart-define=WEBSOCKET_SECURE=$WS_SECURE"
+
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         if [[ "$BUILD_MODE" == "release" ]]; then
-            flutter build appbundle --release
+            flutter build appbundle --release $DART_DEFINES
         else
-            flutter build appbundle --debug
+            flutter build appbundle --debug $DART_DEFINES
         fi
 
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/bundle/${BUILD_MODE}/app-${BUILD_MODE}.aab"
     else
         if [[ "$BUILD_MODE" == "release" ]]; then
-            flutter build apk --release
+            flutter build apk --release $DART_DEFINES
         else
-            flutter build apk --debug
+            flutter build apk --debug $DART_DEFINES
         fi
 
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/flutter-apk/app-${BUILD_MODE}.apk"
@@ -170,10 +181,10 @@ copy_to_dist() {
 
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         SOURCE="$CLIENT_DIR/build/app/outputs/bundle/${BUILD_MODE}/app-${BUILD_MODE}.aab"
-        DEST="$DIST_DIR/guardyn-${VERSION}.aab"
+        DEST="$DIST_DIR/guardyn-${VERSION}-${GUARDYN_DOMAIN}.aab"
     else
         SOURCE="$CLIENT_DIR/build/app/outputs/flutter-apk/app-${BUILD_MODE}.apk"
-        DEST="$DIST_DIR/guardyn-${VERSION}.apk"
+        DEST="$DIST_DIR/guardyn-${VERSION}-${GUARDYN_DOMAIN}.apk"
     fi
 
     cp "$SOURCE" "$DEST"
@@ -193,10 +204,12 @@ print_summary() {
     echo "Build Type: $BUILD_TYPE"
     echo "Build Mode: $BUILD_MODE"
     echo "Version: $VERSION"
+    echo "Domain: $GUARDYN_DOMAIN"
+    echo "WebSocket Secure: $WS_SECURE"
     echo ""
 
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
-        echo "Output: $PROJECT_ROOT/dist/android/guardyn-${VERSION}.aab"
+        echo "Output: $PROJECT_ROOT/dist/android/guardyn-${VERSION}-${GUARDYN_DOMAIN}.aab"
         echo ""
         echo "Next steps:"
         echo "1. Go to Google Play Console"
@@ -204,7 +217,7 @@ print_summary() {
         echo "3. Upload the .aab file"
         echo "4. Complete release notes and submit"
     else
-        echo "Output: $PROJECT_ROOT/dist/android/guardyn-${VERSION}.apk"
+        echo "Output: $PROJECT_ROOT/dist/android/guardyn-${VERSION}-${GUARDYN_DOMAIN}.apk"
         echo ""
         echo "Note: APKs cannot be uploaded to Google Play."
         echo "Use 'appbundle' for Play Store submission."
