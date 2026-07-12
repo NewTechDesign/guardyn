@@ -21,9 +21,23 @@ on:
         type: boolean
         default: true
         required: true
+      domain:
+        description: 'Domain for self-hosted deployment (e.g., nothingcore.duckdns.org)'
+        type: string
+        default: 'nothingcore.duckdns.org'
+        required: false
+      production-build:
+        description: 'Build for production (HTTPS/WSS enabled)'
+        type: boolean
+        default: true
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
+  GUARDYN_DOMAIN: ${{ github.event.inputs.domain || 'nothingcore.duckdns.org' }}
+  PRODUCTION_BUILD: ${{ github.event.inputs.production-build || true }}
+  WS_SECURE: ${{ github.event.inputs.production-build == true && 'true' || 'false' }}
+  WS_PORT: ${{ github.event.inputs.production-build == true && '443' || '8081' }}
 
 jobs:
   publish-backend:
@@ -158,6 +172,9 @@ jobs:
         id: build
         working-directory: ./client-desktop
         run: |
+          export GUARDYN_DOMAIN="${{ env.GUARDYN_DOMAIN }}"
+          export WS_SECURE="${{ env.WS_SECURE }}"
+          export WS_PORT="${{ env.WS_PORT }}"
           npm run tauri build -- --bundles deb,appimage 2>&1 | tee ../tauri-build-linux.log
 
       - name: Upload build log
@@ -244,6 +261,9 @@ jobs:
         working-directory: ./client-desktop
         continue-on-error: true
         run: |
+          export GUARDYN_DOMAIN="${{ env.GUARDYN_DOMAIN }}"
+          export WS_SECURE="${{ env.WS_SECURE }}"
+          export WS_PORT="${{ env.WS_PORT }}"
           npm run tauri build -- --bundles dmg 2>&1 | tee ../tauri-build-macos.log
 
       - name: Upload build log
@@ -333,6 +353,9 @@ jobs:
         working-directory: ./client-desktop
         continue-on-error: true
         run: |
+          $env:GUARDYN_DOMAIN="${{ env.GUARDYN_DOMAIN }}"
+          $env:WS_SECURE="${{ env.WS_SECURE }}"
+          $env:WS_PORT="${{ env.WS_PORT }}"
           npm run tauri build -- --bundles msi,nsis 2>&1 | tee ../tauri-build-windows.log
 
       - name: Upload build log
@@ -423,11 +446,17 @@ jobs:
 
       - name: Build Android APK
         working-directory: ./client-mobile
-        run: ./scripts/build-android.sh apk release
+        run: |
+          flutter build apk release \
+            --dart-define=GUARDYN_DOMAIN=${{ env.GUARDYN_DOMAIN }} \
+            --dart-define=WEBSOCKET_SECURE=${{ env.WS_SECURE }}
 
       - name: Build Android AAB
         working-directory: ./client-mobile
-        run: ./scripts/build-android.sh appbundle release
+        run: |
+          flutter build appbundle release \
+            --dart-define=GUARDYN_DOMAIN=${{ env.GUARDYN_DOMAIN }} \
+            --dart-define=WEBSOCKET_SECURE=${{ env.WS_SECURE }}
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -469,7 +498,6 @@ jobs:
           if [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # For manual dispatch, use the latest tag or create one
             echo "tag_name=v$(date +'%Y.%m.%d')-manual" >> $GITHUB_OUTPUT
           else
             echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
