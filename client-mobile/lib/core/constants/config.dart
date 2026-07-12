@@ -1,99 +1,123 @@
 import 'dart:io' show Platform;
 
-/// Application configuration constants
-///
-/// Guardyn supports ONLY native platforms:
-/// - Mobile: Android, iOS
-/// - Desktop: Linux, macOS, Windows (via Tauri client-desktop/)
-///
-/// Web platform is NOT supported for security reasons:
-/// - No Rust FFI for post-quantum cryptography
-/// - No secure key storage (localStorage is vulnerable)
-/// - XSS and browser extension attacks possible
 class AppConfig {
-  // gRPC service endpoints
-  // For local development with Docker Compose:
-  //   docker compose -f docker-compose.dev.yml up -d
-  //   Services available on localhost:50051, localhost:50052, etc.
+  // ═══════════════════════════════════════════════════════════════
+  // DOMAIN CONFIGURATION
+  // ═══════════════════════════════════════════════════════════════
 
-  /// Get platform-specific gRPC host
-  /// - Android Emulator: 10.0.2.2 (host machine from emulator)
-  /// - iOS Simulator, Desktop: localhost
-  /// Can be overridden with --dart-define=GRPC_HOST=<host>
-  static String get authHost {
-    // Allow override via dart-define for testing
-    const testHost = String.fromEnvironment('GRPC_HOST');
-    if (testHost.isNotEmpty) {
-      return testHost;
-    }
-
-    if (Platform.isAndroid) {
-      // Android emulator - use special host address to reach host machine
-      return '10.0.2.2';
-    } else {
-      // iOS Simulator, Linux, macOS, Windows - use localhost
-      return 'localhost';
-    }
+  static String get _domain {
+    const domain = String.fromEnvironment('GUARDYN_DOMAIN');
+    if (domain.isNotEmpty) return domain;
+    const host = String.fromEnvironment('GRPC_HOST');
+    if (host.isNotEmpty) return host;
+    if (Platform.isAndroid) return '10.0.2.2';
+    return 'localhost';
   }
 
-  static const int authPort = 50051;
+  static bool get _isProduction {
+    final domain = _domain;
+    return domain != 'localhost' && 
+           domain != '127.0.0.1' && 
+           domain != '10.0.2.2';
+  }
 
-  static String get messagingHost => authHost; // Same logic as authHost
-  static const int messagingPort = 50052;
+  static bool get _secure {
+    const secure = String.fromEnvironment('WEBSOCKET_SECURE');
+    if (secure.isNotEmpty) return secure == 'true';
+    return _isProduction;
+  }
 
-  static String get presenceHost => authHost; // Same logic as authHost
-  static const int presencePort = 50053;
+  static int get _grpcPort {
+    if (_isProduction) return 443;
+    const port = String.fromEnvironment('GRPC_PORT');
+    if (port.isNotEmpty) return int.tryParse(port) ?? 50051;
+    return 50051;
+  }
 
-  static String get mediaHost => authHost; // Same logic as authHost
-  static const int mediaPort = 50054;
+  // ═══════════════════════════════════════════════════════════════
+  // GATEWAY ROUTES (Nginx locations)
+  // ═══════════════════════════════════════════════════════════════
+  //
+  // location /auth/      → grpc://127.0.0.1:52015
+  // location /messaging/ → grpc://127.0.0.1:52016
+  // location /presence/  → grpc://127.0.0.1:52018
+  // location /media/     → grpc://127.0.0.1:52019
+  // location /notification/ → grpc://127.0.0.1:52022
+  // location /calls/     → grpc://127.0.0.1:52020
+  // location /ws/        → http://127.0.0.1:52017
+  // location /storage/   → http://127.0.0.1:52010
+  // location /api/       → http://127.0.0.1:52012
+  // location /minio-console/ → http://127.0.0.1:52011
+  // location /redpanda-console/ → http://127.0.0.1:52023
 
-  static String get notificationHost => authHost; // Same logic as authHost
-  static const int notificationPort = 50055;
+  static String get _scheme => _secure ? 'https' : 'http';
+  static String get _wsScheme => _secure ? 'wss' : 'ws';
+  static String get _port => _isProduction ? '' : ':${_grpcPort}';
 
-  static String get callHost => authHost; // Same logic as authHost
-  static const int callPort = 50056;
+  static String get baseUrl => '$_scheme://$_domain$_port';
+  static String get wsBaseUrl => '$_wsScheme://$_domain$_port';
 
-  // S3/MinIO configuration for file uploads
-  static String get minioHost => authHost; // Same logic as gRPC hosts
-  static const int minioPort = 9000;
+  // ═══════════════════════════════════════════════════════════════
+  // GATEWAY HOSTS (all services share same domain)
+  // ═══════════════════════════════════════════════════════════════
 
-  /// Transform internal Docker presigned URLs to client-accessible URLs
-  /// The backend generates URLs with 'minio:9000' which is internal to Docker.
-  /// This method replaces the internal host with the client-accessible host.
+  static String get authHost => _domain;
+  static String get messagingHost => _domain;
+  static String get presenceHost => _domain;
+  static String get mediaHost => _domain;
+  static String get notificationHost => _domain;
+  static String get callHost => _domain;
+  static String get minioHost => _domain;
+  static String get websocketHost => _domain;
+
+  // ═══════════════════════════════════════════════════════════════
+  // GATEWAY PORTS (all services via Nginx on 443/80)
+  // ═══════════════════════════════════════════════════════════════
+
+  static int get authPort => _isProduction ? 443 : 50051;
+  static int get messagingPort => _isProduction ? 443 : 50052;
+  static int get presencePort => _isProduction ? 443 : 50053;
+  static int get mediaPort => _isProduction ? 443 : 50054;
+  static int get notificationPort => _isProduction ? 443 : 50055;
+  static int get callPort => _isProduction ? 443 : 50056;
+  static int get minioPort => _isProduction ? 443 : 9000;
+  static int get websocketPort => _isProduction ? 443 : 8081;
+
+  // ═══════════════════════════════════════════════════════════════
+  // PROTOCOLS
+  // ═══════════════════════════════════════════════════════════════
+
+  static bool get websocketSecure => _secure;
+
+  // ═══════════════════════════════════════════════════════════════
+  // URL BUILDERS
+  // ═══════════════════════════════════════════════════════════════
+
+  static String getWebSocketUrl(String token) {
+    return '$wsBaseUrl/ws?token=$token';
+  }
+
+  static String getGrpcUrl(String service) {
+    return '$baseUrl/$service';
+  }
+
   static String transformPresignedUrl(String presignedUrl) {
     final uri = Uri.parse(presignedUrl);
-
-    // Replace internal Docker hostnames with client-accessible host
-    if (uri.host == 'minio' ||
-        uri.host == 'localhost' ||
-        uri.host == '127.0.0.1') {
-      final newUri = uri.replace(host: minioHost, port: minioPort);
-      return newUri.toString();
+    if (uri.host == 'minio' || uri.host == 'localhost' || uri.host == '127.0.0.1') {
+      return uri.replace(
+        scheme: _scheme,
+        host: _domain,
+        port: _isProduction ? 443 : 9000,
+        path: '/storage${uri.path}',
+      ).toString();
     }
-
-    // Return as-is if already using correct host
     return presignedUrl;
   }
 
-  // WebSocket configuration
-  static String get websocketHost => authHost; // Same logic as gRPC hosts
-  static const int websocketPort = 8081;
-  static const bool websocketSecure = false; // Use 'ws://' for local dev
+  // ═══════════════════════════════════════════════════════════════
+  // METADATA
+  // ═══════════════════════════════════════════════════════════════
 
-  /// Get WebSocket URL with authentication token
-  static String getWebSocketUrl(String token) {
-    final protocol = websocketSecure ? 'wss' : 'ws';
-    return '$protocol://$websocketHost:$websocketPort/ws?token=$token';
-  }
-
-  // For production (with TLS):
-  // static const String authHost = 'auth.guardyn.io';
-  // static const int authPort = 443;
-  // static const String messagingHost = 'messaging.guardyn.io';
-  // static const int messagingPort = 443;
-
-  // App metadata
   static const String appName = 'Guardyn';
   static const String appVersion = '0.1.0';
 }
-
