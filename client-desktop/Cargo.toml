@@ -94,3 +94,14 @@ xcap = "0.3"
 
 # Image processing for thumbnails
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+# Flatpak Metadata
+[package.metadata.flatpak]
+name = "Guardyn"
+summary = "Secure E2EE Messenger with post-quantum encryption"
+description = "Guardyn is a privacy-focused secure communication platform with post-quantum encryption, secure messaging, voice/video calls, and file sharing."
+license = "MIT"
+homepage = "https://guardyn.io"
+developer = "Guardyn Team"
+website = "https://guardyn.io"
+icon = "icons/icon.png"
