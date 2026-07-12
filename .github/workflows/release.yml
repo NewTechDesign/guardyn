@@ -447,16 +447,7 @@ jobs:
       - name: Build Android APK
         working-directory: ./client-mobile
         run: |
-          flutter build apk release \
-            --dart-define=GUARDYN_DOMAIN=${{ env.GUARDYN_DOMAIN }} \
-            --dart-define=WEBSOCKET_SECURE=${{ env.WS_SECURE }}
-
-      - name: Build Android AAB
-        working-directory: ./client-mobile
-        run: |
-          flutter build appbundle release \
-            --dart-define=GUARDYN_DOMAIN=${{ env.GUARDYN_DOMAIN }} \
-            --dart-define=WEBSOCKET_SECURE=${{ env.WS_SECURE }}
+          ./scripts/build-android.sh apk release ${{ env.GUARDYN_DOMAIN }} ${{ env.WS_SECURE }}
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
