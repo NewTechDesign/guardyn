@@ -363,16 +363,30 @@ pub async fn get_ws_config(state: State<'_, AppState>) -> Result<WebSocketConfig
                 }
                 Err(e) => {
                     tracing::error!("Failed to refresh token for WebSocket: {:?}", e);
-                    // Continue with expired token - WebSocket will fail and client can handle
                 }
             }
         }
     }
 
-    // Get WebSocket URL from environment or use default for local development
-    let ws_host = std::env::var("WS_HOST").unwrap_or_else(|_| "localhost".to_string());
-    let ws_port = std::env::var("WS_PORT").unwrap_or_else(|_| "8081".to_string());
-    let ws_secure = std::env::var("WS_SECURE").unwrap_or_else(|_| "false".to_string());
+    // Get WebSocket URL from environment or use default
+    let ws_host = std::env::var("WS_HOST")
+        .or_else(|_| std::env::var("GUARDYN_DOMAIN"))
+        .or_else(|_| std::env::var("GRPC_HOST"))
+        .unwrap_or_else(|_| "localhost".to_string());
+    
+    let ws_port = std::env::var("WS_PORT")
+        .or_else(|_| std::env::var("GUARDYN_WS_PORT"))
+        .unwrap_or_else(|_| {
+            let is_prod = ws_host != "localhost" && ws_host != "127.0.0.1";
+            if is_prod { "443".to_string() } else { "8081".to_string() }
+        });
+    
+    let ws_secure = std::env::var("WS_SECURE")
+        .or_else(|_| std::env::var("GUARDYN_WS_SECURE"))
+        .unwrap_or_else(|_| {
+            let is_prod = ws_host != "localhost" && ws_host != "127.0.0.1";
+            if is_prod { "true".to_string() } else { "false".to_string() }
+        });
     
     let protocol = if ws_secure == "true" { "wss" } else { "ws" };
     let url = format!("{}://{}:{}/ws", protocol, ws_host, ws_port);
