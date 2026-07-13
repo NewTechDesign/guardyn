@@ -45,7 +45,7 @@ class GrpcClients {
   ClientChannel _createChannel(String host, int port) {
     _logger.i('Creating gRPC channel to $host:$port');
 
-    final channel = ClientChannel(
+    return ClientChannel(
       host,
       port: port,
       options: ChannelOptions(
@@ -66,23 +66,6 @@ class GrpcClients {
         ),
       ),
     );
-
-    channel.onConnectionStateChange.listen((state) {
-      _logger.i('gRPC connection state: $state on $host:$port');
-      if (state == ConnectionState.connecting) {
-        _logger.i('gRPC connecting to $host:$port...');
-      } else if (state == ConnectionState.ready) {
-        _logger.i('gRPC connected to $host:$port');
-      } else if (state == ConnectionState.transientFailure) {
-        _logger.e('gRPC transient failure on $host:$port');
-      } else if (state == ConnectionState.idle) {
-        _logger.w('gRPC connection idle on $host:$port');
-      } else if (state == ConnectionState.shutdown) {
-        _logger.w('gRPC connection shutdown on $host:$port');
-      }
-    });
-
-    return channel;
   }
 
   /// Initialize gRPC channels and clients
