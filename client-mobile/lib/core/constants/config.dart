@@ -54,8 +54,8 @@ class AppConfig {
   static String get _wsScheme => _secure ? 'wss' : 'ws';
   static String get _port => _isProduction ? '' : ':${_grpcPort}';
 
-  static String get baseUrl => '$_scheme://$_domain$_port';
-  static String get wsBaseUrl => '$_wsScheme://$_domain$_port';
+  static String get baseUrl => '$_scheme://$_domain$_port/';
+  static String get wsBaseUrl => '$_wsScheme://$_domain$_port/';
 
   // ═══════════════════════════════════════════════════════════════
   // GATEWAY HOSTS (all services share same domain)
@@ -94,11 +94,11 @@ class AppConfig {
   // ═══════════════════════════════════════════════════════════════
 
   static String getWebSocketUrl(String token) {
-    return '$wsBaseUrl/ws?token=$token';
+    return '${wsBaseUrl}ws/?token=$token';
   }
 
   static String getGrpcUrl(String service) {
-    return '$baseUrl/$service';
+    return '${baseUrl}${service}/';
   }
 
   static String transformPresignedUrl(String presignedUrl) {
