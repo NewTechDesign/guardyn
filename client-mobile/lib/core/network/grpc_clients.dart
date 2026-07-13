@@ -6,12 +6,15 @@ import 'package:guardyn_client/generated/media.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
 import 'package:guardyn_client/generated/notifications.pbgrpc.dart';
 import 'package:guardyn_client/generated/presence.pbgrpc.dart';
+import 'package:logger/logger.dart';
 
 /// Manages gRPC client connections to backend services
 ///
 /// Supported platforms: Android, iOS, Linux, macOS, Windows
 /// Web is NOT supported for security reasons.
 class GrpcClients {
+  static final Logger _logger = Logger();
+
   late ClientChannel _authChannel;
   late ClientChannel _messagingChannel;
   late ClientChannel _presenceChannel;
@@ -40,7 +43,9 @@ class GrpcClients {
   /// Create gRPC channel for native platforms with keepalive settings
   /// Keepalive prevents "Connection is being forcefully terminated" errors
   ClientChannel _createChannel(String host, int port) {
-    return ClientChannel(
+    _logger.i('Creating gRPC channel to $host:$port');
+
+    final channel = ClientChannel(
       host,
       port: port,
       options: ChannelOptions(
@@ -61,11 +66,36 @@ class GrpcClients {
         ),
       ),
     );
+
+    channel.onConnectionStateChange.listen((state) {
+      _logger.i('gRPC connection state: $state on $host:$port');
+      if (state == ConnectionState.connecting) {
+        _logger.i('gRPC connecting to $host:$port...');
+      } else if (state == ConnectionState.ready) {
+        _logger.i('gRPC connected to $host:$port');
+      } else if (state == ConnectionState.transientFailure) {
+        _logger.e('gRPC transient failure on $host:$port');
+      } else if (state == ConnectionState.idle) {
+        _logger.w('gRPC connection idle on $host:$port');
+      } else if (state == ConnectionState.shutdown) {
+        _logger.w('gRPC connection shutdown on $host:$port');
+      }
+    });
+
+    return channel;
   }
 
   /// Initialize gRPC channels and clients
   Future<void> initialize() async {
     if (_initialized) return;
+
+    _logger.i('Initializing gRPC clients...');
+    _logger.i('Auth host: ${AppConfig.authHost}, port: ${AppConfig.authPort}');
+    _logger.i('Messaging host: ${AppConfig.messagingHost}, port: ${AppConfig.messagingPort}');
+    _logger.i('Presence host: ${AppConfig.presenceHost}, port: ${AppConfig.presencePort}');
+    _logger.i('Media host: ${AppConfig.mediaHost}, port: ${AppConfig.mediaPort}');
+    _logger.i('Notification host: ${AppConfig.notificationHost}, port: ${AppConfig.notificationPort}');
+    _logger.i('Call host: ${AppConfig.callHost}, port: ${AppConfig.callPort}');
 
     // Create native gRPC channels
     _authChannel = _createChannel(
@@ -111,10 +141,12 @@ class GrpcClients {
     incomingCallsClient = CallServiceClient(_incomingCallsChannel);
 
     _initialized = true;
+    _logger.i('All gRPC clients initialized successfully');
   }
 
   /// Close all gRPC channels
   Future<void> dispose() async {
+    _logger.i('Disposing gRPC clients...');
     await Future.wait([
       _authChannel.shutdown(),
       _messagingChannel.shutdown(),
@@ -125,5 +157,6 @@ class GrpcClients {
       _incomingCallsChannel.shutdown(),
     ]);
     _initialized = false;
+    _logger.i('gRPC clients disposed');
   }
 }
